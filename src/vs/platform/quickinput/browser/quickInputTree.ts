@@ -37,20 +37,9 @@ import { RenderIndentGuides } from 'vs/base/browser/ui/tree/abstractTree';
 import { ThrottledDelayer } from 'vs/base/common/async';
 import { isCancellationError } from 'vs/base/common/errors';
 import type { IHoverWidget, IUpdatableHoverTooltipMarkdownString } from 'vs/base/browser/ui/hover/hover';
+import { QuickPickFocus } from '../common/quickInput';
 
 const $ = dom.$;
-
-export enum QuickInputListFocus {
-	First = 1,
-	Second,
-	Last,
-	Next,
-	Previous,
-	NextPage,
-	PreviousPage,
-	NextSeparator,
-	PreviousSeparator
-}
 
 interface IQuickInputItemLazyParts {
 	readonly saneLabel: string;
@@ -1221,29 +1210,29 @@ export class QuickInputTree extends Disposable {
 		}
 	}
 
-	focus(what: QuickInputListFocus): void {
+	focus(what: QuickPickFocus): void {
 		if (!this._itemElements.length) {
 			return;
 		}
 
-		if (what === QuickInputListFocus.Second && this._itemElements.length < 2) {
-			what = QuickInputListFocus.First;
+		if (what === QuickPickFocus.Second && this._itemElements.length < 2) {
+			what = QuickPickFocus.First;
 		}
 
 		switch (what) {
-			case QuickInputListFocus.First:
+			case QuickPickFocus.First:
 				this._tree.scrollTop = 0;
 				this._tree.focusFirst(undefined, (e) => e.element instanceof QuickPickItemElement);
 				break;
-			case QuickInputListFocus.Second:
+			case QuickPickFocus.Second:
 				this._tree.scrollTop = 0;
 				this._tree.setFocus([this._itemElements[1]]);
 				break;
-			case QuickInputListFocus.Last:
+			case QuickPickFocus.Last:
 				this._tree.scrollTop = this._tree.scrollHeight;
 				this._tree.setFocus([this._itemElements[this._itemElements.length - 1]]);
 				break;
-			case QuickInputListFocus.Next:
+			case QuickPickFocus.Next:
 				this._tree.focusNext(undefined, true, undefined, (e) => {
 					if (!(e.element instanceof QuickPickItemElement)) {
 						return false;
@@ -1252,7 +1241,7 @@ export class QuickInputTree extends Disposable {
 					return true;
 				});
 				break;
-			case QuickInputListFocus.Previous:
+			case QuickPickFocus.Previous:
 				this._tree.focusPrevious(undefined, true, undefined, (e) => {
 					if (!(e.element instanceof QuickPickItemElement)) {
 						return false;
@@ -1267,7 +1256,7 @@ export class QuickInputTree extends Disposable {
 					return true;
 				});
 				break;
-			case QuickInputListFocus.NextPage:
+			case QuickPickFocus.NextPage:
 				this._tree.focusNextPage(undefined, (e) => {
 					if (!(e.element instanceof QuickPickItemElement)) {
 						return false;
@@ -1276,7 +1265,7 @@ export class QuickInputTree extends Disposable {
 					return true;
 				});
 				break;
-			case QuickInputListFocus.PreviousPage:
+			case QuickPickFocus.PreviousPage:
 				this._tree.focusPreviousPage(undefined, (e) => {
 					if (!(e.element instanceof QuickPickItemElement)) {
 						return false;
@@ -1290,7 +1279,7 @@ export class QuickInputTree extends Disposable {
 					return true;
 				});
 				break;
-			case QuickInputListFocus.NextSeparator: {
+			case QuickPickFocus.NextSeparator: {
 				let foundSeparatorAsItem = false;
 				const before = this._tree.getFocus()[0];
 				this._tree.focusNext(undefined, true, undefined, (e) => {
@@ -1335,7 +1324,7 @@ export class QuickInputTree extends Disposable {
 				}
 				break;
 			}
-			case QuickInputListFocus.PreviousSeparator: {
+			case QuickPickFocus.PreviousSeparator: {
 				let focusElement: IQuickPickElement | undefined;
 				// If we are already sitting on an inline separator, then we
 				// have already found the _current_ separator and need to
