@@ -25,7 +25,7 @@ steps:
 - task: AzureStaticWebApp@0
   inputs:
           projects: '**/*.csproj'
-          arguments: '--configuration $(buildConfiguration)' # Update this to match your needs
+arguments: '--configuration $(buildConfiguration)' # Specify the build configuration (e.g., Debug or Release) as per your project requirements.
  
 
 - script: |
