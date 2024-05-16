@@ -22,7 +22,7 @@ import { CommandsConverter, ExtHostCommands } from 'vs/workbench/api/common/extH
 import * as typeConvert from 'vs/workbench/api/common/extHostTypeConverters';
 import * as extHostTypes from 'vs/workbench/api/common/extHostTypes';
 import { ChatAgentLocation, IChatAgentRequest, IChatAgentResult } from 'vs/workbench/contrib/chat/common/chatAgents';
-import { IChatContentReference, IChatFollowup, IChatUserActionEvent, InteractiveSessionVoteDirection } from 'vs/workbench/contrib/chat/common/chatService';
+import { IChatContentReference, IChatFollowup, IChatUserActionEvent, ChatAgentVoteDirection, IChatResponseErrorDetails } from 'vs/workbench/contrib/chat/common/chatService';
 import { checkProposedApiEnabled, isProposedApiEnabled } from 'vs/workbench/services/extensions/common/extensions';
 import { Dto } from 'vs/workbench/services/extensions/common/proxyIdentifier';
 import type * as vscode from 'vscode';
@@ -152,6 +152,10 @@ class ChatAgentResponseStream {
 				},
 				reference(value, iconPath) {
 					throwIfDone(this.reference);
+
+					if ('variableName' in value) {
+						checkProposedApiEnabled(that._extension, 'chatParticipantAdditions');
+					}
 
 					if ('variableName' in value && !value.value) {
 						// The participant used this variable. Does that variable have any references to pull in?
@@ -314,7 +318,14 @@ export class ExtHostChatAgents2 extends Disposable implements ExtHostChatAgentsS
 						return { errorDetails: { message: msg }, timings: stream.timings };
 					}
 				}
-				return { errorDetails: result?.errorDetails, timings: stream.timings, metadata: result?.metadata };
+				let errorDetails: IChatResponseErrorDetails | undefined;
+				if (result?.errorDetails) {
+					errorDetails = {
+						...result.errorDetails,
+						responseIsIncomplete: true
+					};
+				}
+				return { errorDetails, timings: stream.timings, metadata: result?.metadata } satisfies IChatAgentResult;
 			}), token);
 		} catch (e) {
 			this._logService.error(e, agent.extension);
@@ -373,7 +384,7 @@ export class ExtHostChatAgents2 extends Disposable implements ExtHostChatAgentsS
 			.map(f => typeConvert.ChatFollowup.from(f, request));
 	}
 
-	$acceptFeedback(handle: number, result: IChatAgentResult, vote: InteractiveSessionVoteDirection, reportIssue?: boolean): void {
+	$acceptFeedback(handle: number, result: IChatAgentResult, vote: ChatAgentVoteDirection, reportIssue?: boolean): void {
 		const agent = this._agents.get(handle);
 		if (!agent) {
 			return;
@@ -382,10 +393,10 @@ export class ExtHostChatAgents2 extends Disposable implements ExtHostChatAgentsS
 		const ehResult = typeConvert.ChatAgentResult.to(result);
 		let kind: extHostTypes.ChatResultFeedbackKind;
 		switch (vote) {
-			case InteractiveSessionVoteDirection.Down:
+			case ChatAgentVoteDirection.Down:
 				kind = extHostTypes.ChatResultFeedbackKind.Unhelpful;
 				break;
-			case InteractiveSessionVoteDirection.Up:
+			case ChatAgentVoteDirection.Up:
 				kind = extHostTypes.ChatResultFeedbackKind.Helpful;
 				break;
 		}
@@ -465,6 +476,7 @@ class ExtHostChatAgent {
 	private _agentVariableProvider?: { provider: vscode.ChatParticipantCompletionItemProvider; triggerCharacters: string[] };
 	private _welcomeMessageProvider?: vscode.ChatWelcomeMessageProvider | undefined;
 	private _requester: vscode.ChatRequesterInformation | undefined;
+	private _supportsSlowReferences: boolean | undefined;
 
 	constructor(
 		public readonly extension: IExtensionDescription,
@@ -562,7 +574,8 @@ class ExtHostChatAgent {
 					helpTextVariablesPrefix: (!this._helpTextVariablesPrefix || typeof this._helpTextVariablesPrefix === 'string') ? this._helpTextVariablesPrefix : typeConvert.MarkdownString.from(this._helpTextVariablesPrefix),
 					helpTextPostfix: (!this._helpTextPostfix || typeof this._helpTextPostfix === 'string') ? this._helpTextPostfix : typeConvert.MarkdownString.from(this._helpTextPostfix),
 					supportIssueReporting: this._supportIssueReporting,
-					requester: this._requester
+					requester: this._requester,
+					supportsSlowVariables: this._supportsSlowReferences,
 				});
 				updateScheduled = false;
 			});
@@ -687,6 +700,13 @@ class ExtHostChatAgent {
 			},
 			get requester() {
 				return that._requester;
+			},
+			set supportsSlowReferences(v) {
+				that._supportsSlowReferences = v;
+				updateMetadataSoon();
+			},
+			get supportsSlowReferences() {
+				return that._supportsSlowReferences;
 			},
 			dispose() {
 				disposed = true;
