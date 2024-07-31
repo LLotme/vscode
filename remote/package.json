@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "dependencies": {
-    "@microsoft/1ds-core-js": "^4.2.1",
+    "@microsoft/1ds-core-js": "^4.3.0",
     "@microsoft/1ds-post-js": "^4.2.2",
     "@parcel/watcher": "2.4.1",
     "@vscode/deviceid": "^0.1.1",
